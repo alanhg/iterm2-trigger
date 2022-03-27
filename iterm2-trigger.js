@@ -41,11 +41,11 @@ const utils = {
 
   /**
    * 递归检查目标文件夹中是不是有命中目标后缀的文件，最多尝试N次
+   * @param canRetryLimit
    * @param filePath 文件
-   * @param {string} suffix 文件后缀格式，比如.js
-   * @param {number} retryMatch 尝试匹配次数
+   * @param suffixes
    */
-  suffixMatch: (filePath, suffixes, canRetryLimit = 10) => {
+  suffixMatch: (canRetryLimit = 10, filePath, suffixes) => {
     return utils.matchFn(canRetryLimit, filePath, suffixes)[1];
   }, checkAppExist: (shell) => {
     try {
@@ -68,8 +68,8 @@ const utils = {
  * 项目文件夹名称命中go词汇的，使用goland打开
  */
 const commandMap = new Map();
-commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(_filePath, ['.go']), '/usr/local/bin/goland');
-commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(_filePath, ['.js', '.jsx', '.ts', '.tsx']), '/usr/local/bin/webstorm');
+commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(15, _filePath, ['.go']), '/usr/local/bin/goland');
+commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(15, _filePath, ['.js', '.jsx', '.ts', '.tsx']), '/usr/local/bin/webstorm');
 commandMap.set((_filePath) => true, 'open');
 
 (function init() {
