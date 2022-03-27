@@ -3,7 +3,8 @@ const {execSync} = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const filename = path.basename(filePath);
-const SKIP_MATCH_FILES = ['.git'];
+// 部分文件跳过检查
+const SKIP_MATCH_FILES_REG = [/^\./, /^node_modules$/];
 
 const utils = {
 
@@ -21,7 +22,7 @@ const utils = {
     if (utils.isDirectory(filePath)) {
       const files = fs.readdirSync(filePath);
       for (const file of files) {
-        if (SKIP_MATCH_FILES.includes(file)) {
+        if (SKIP_MATCH_FILES_REG.some(reg => file.match(reg))) {
           continue;
         }
         const res = utils.matchFn(limitLeft, `${filePath}/${file}`, suffixes);
@@ -68,8 +69,8 @@ const utils = {
  * 项目文件夹名称命中go词汇的，使用goland打开
  */
 const commandMap = new Map();
-commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(15, _filePath, ['.go']), '/usr/local/bin/goland');
-commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(15, _filePath, ['.js', '.jsx', '.ts', '.tsx']), '/usr/local/bin/webstorm');
+commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath, ['.go']), '/usr/local/bin/goland');
+commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath, ['.js', '.jsx', '.ts', '.tsx']), '/usr/local/bin/webstorm');
 commandMap.set((_filePath) => true, 'open');
 
 (function init() {

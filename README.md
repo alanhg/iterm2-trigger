@@ -1,9 +1,11 @@
 > iterm2终端下点击不同文件时，执行不同动作。
 
+![](./screenshot.gif)
 
 ## 配置
 
 ![https://i.imgur.com/t61vWbZ.jpg](https://i.imgur.com/t61vWbZ.jpg)
+
 
 ## 当前效果
 点击文件/文件夹
