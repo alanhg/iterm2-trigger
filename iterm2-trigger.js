@@ -69,7 +69,7 @@ const utils = {
  */
 const commandMap = new Map();
 commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(_filePath, ['.go']), '/usr/local/bin/goland');
-commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(_filePath, ['.js', '.ts']), '/usr/local/bin/webstorm');
+commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(_filePath, ['.js', '.jsx', '.ts', '.tsx']), '/usr/local/bin/webstorm');
 commandMap.set((_filePath) => true, 'open');
 
 (function init() {
