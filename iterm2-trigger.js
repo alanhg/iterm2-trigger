@@ -1,82 +1,87 @@
-const [, , file] = process.argv;
+const [, , filePath] = process.argv;
 const {execSync} = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const filename = path.basename(filePath);
+const SKIP_MATCH_FILES = ['.git'];
 
-const filename = path.basename(file);
-const commandMap = new Map();
+const utils = {
+
+  /**
+   * word match
+   */
+  wordMatch: (word) => {
+    return (str) => {
+      return str.match(new RegExp(`\\b${word}\\b`, 'g'));
+    };
+  }, matchFn: (limitLeft, filePath, suffixes) => {
+    if (limitLeft <= 0) {
+      return [limitLeft, false];
+    }
+    if (utils.isDirectory(filePath)) {
+      const files = fs.readdirSync(filePath);
+      for (const file of files) {
+        if (SKIP_MATCH_FILES.includes(file)) {
+          continue;
+        }
+        const res = utils.matchFn(limitLeft, `${filePath}/${file}`, suffixes);
+        limitLeft = res[0];
+        if (res[1]) {
+          return [limitLeft, true];
+        }
+      }
+    } else {
+      limitLeft = limitLeft - 1;
+      if (filePath.match(new RegExp(`(${suffixes.join('|')})$`))) {
+        return [limitLeft, true];
+      }
+    }
+    return [limitLeft, false];
+  },
+
+  /**
+   * 递归检查目标文件夹中是不是有命中目标后缀的文件，最多尝试N次
+   * @param filePath 文件
+   * @param {string} suffix 文件后缀格式，比如.js
+   * @param {number} retryMatch 尝试匹配次数
+   */
+  suffixMatch: (filePath, suffixes, canRetryLimit = 10) => {
+    return utils.matchFn(canRetryLimit, filePath, suffixes)[1];
+  }, checkAppExist: (shell) => {
+    try {
+      execSync(`which ${shell}`);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }, isDirectory: (file) => {
+    return fs.lstatSync(file).isDirectory();
+  }, isFile: (file) => {
+    return fs.lstatSync(file).isFile();
+  }
+};
 
 /**
- * 调试脚本
- * ~/bin/iterm2-trigger.sh '/git/chainmaker-go'
- */
-
-/**
+ * 调试脚本 ./iterm2-trigger.sh '/git/chainmaker-go'
  * 设置各种文件的默认打开程序
  * key为条件，value为执行命令，缺省使用默认打开程序
  * 项目文件夹名称命中go词汇的，使用goland打开
  */
-const default_app = 'open';
-const default_app_for_directory = checkAppExist('/usr/local/bin/webstorm') ? '/usr/local/bin/webstorm' : default_app;
+const commandMap = new Map();
+commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(_filePath, ['.go']), '/usr/local/bin/goland');
+commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(_filePath, ['.js', '.ts']), '/usr/local/bin/webstorm');
+commandMap.set((_filePath) => true, 'open');
 
-commandMap.set(() => wordMatch('go')(filename) && fs.lstatSync(file).isDirectory(), '/usr/local/bin/goland');
-
-commandMap.set(() => fs.lstatSync(file).isDirectory(), default_app_for_directory);
-
-(function () {
-  let commandStr = `open ${file}`;
+(function init() {
+  let commandStr = '';
   for (const fn of commandMap.keys()) {
-    if (fn(file)) {
-      console.log(fn.toString());
+    if (fn(filePath)) {
       commandStr = commandMap.get(fn);
-      break;
-    }
-  }
-  if (fs.lstatSync(file).isDirectory() && !checkAppExist(commandStr)) {
-    commandStr = default_app_for_directory;
-  }
-  execSync(`${commandStr} ${file}`);
-})();
-
-/**
- * word match
- */
-function wordMatch(word) {
-  return (str) => {
-    return str.match(new RegExp(`\\b${word}\\b`, 'g'));
-  };
-}
-
-
-/**
- * 检查目标文件是不是命中文件后缀，尝试10次有命中则认为成功
- * @param directory
- */
-function suffixMatch(suffix, retryCount = 10) {
-  const matchFn = (file, count) => {
-    if (!fs.lstatSync(file).isDirectory()) {
-      return directory.match(`${suffix}$`).length > 0;
-    } else {
-      const files = fs.readdirSync(file);
-      for (const file of files) {
-        return matchFn(file);
+      if (utils.checkAppExist(commandStr)) {
+        break;
       }
     }
   }
+  execSync(`${commandStr} ${filePath}`);
+})();
 
-  return (directory) => {
-    let count = 0;
-    if (!fs.lstatSync(directory).isDirectory()) {
-      return directory.match(`${suffix}$`).length > 0;
-    }
-  }
-}
-
-function checkAppExist(shell) {
-  try {
-    execSync(`which ${shell}`);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
