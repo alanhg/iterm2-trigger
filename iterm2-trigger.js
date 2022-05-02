@@ -3,7 +3,7 @@ const {execSync} = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const filename = path.basename(filePath);
-// 部分文件跳过检查
+// 部分文件跳过检查，隐藏文件夹自动跳过
 const SKIP_MATCH_FILES_REG = [/^\./, /^node_modules$/];
 
 const utils = {
@@ -68,16 +68,16 @@ const utils = {
  * key为条件，value为执行命令，缺省使用默认打开程序
  * 项目文件夹名称命中go词汇的，使用goland打开
  */
-const commandMap = new Map();
-commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath, ['.go']), '/usr/local/bin/goland');
-commandMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath, ['.js', '.jsx', '.ts', '.tsx']), '/usr/local/bin/webstorm');
-commandMap.set((_filePath) => true, 'open');
+const ruleMap = new Map();
+ruleMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath, ['.go']), '/usr/local/bin/goland');
+ruleMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath, ['.js', '.jsx', '.ts', '.tsx', '.md']), '/usr/local/bin/webstorm');
+ruleMap.set((_filePath) => true, 'open');
 
 (function init() {
   let commandStr = '';
-  for (const fn of commandMap.keys()) {
+  for (const fn of ruleMap.keys()) {
     if (fn(filePath)) {
-      commandStr = commandMap.get(fn);
+      commandStr = ruleMap.get(fn);
       if (utils.checkAppExist(commandStr)) {
         break;
       }
