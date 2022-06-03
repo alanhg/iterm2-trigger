@@ -59,6 +59,16 @@ const utils = {
     return fs.lstatSync(file).isDirectory();
   }, isFile: (file) => {
     return fs.lstatSync(file).isFile();
+  }, showSelector(apps = []) {
+    if (apps.length === 1) {
+      return apps[0];
+    }
+    return () => {
+      const command = `osascript -e 'set appChoices to ${JSON.stringify(apps).replace('[', '{').replace(']', '}')}
+set selectedApp to choose from list appChoices with prompt "Open with" default items {"${apps[0]}"}
+return selectedApp'`;
+      return execSync(command, {encoding: 'utf8'});
+    }
   }
 };
 
@@ -71,6 +81,8 @@ const utils = {
 const ruleMap = new Map();
 ruleMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath, ['.go']), '/usr/local/bin/goland');
 ruleMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath, ['.js', '.jsx', '.ts', '.tsx', '.md']), '/usr/local/bin/webstorm');
+ruleMap.set((_filePath) => utils.suffixMatch(1, _filePath, ['.js', '.jsx', '.ts', '.tsx', '.md']), utils.showSelector(
+    ['/usr/local/bin/webstorm', 'open -a "/Applications/Visual Studio Code.app"']));
 ruleMap.set((_filePath) => true, 'open');
 
 (function init() {
@@ -78,11 +90,13 @@ ruleMap.set((_filePath) => true, 'open');
   for (const fn of ruleMap.keys()) {
     if (fn(filePath)) {
       commandStr = ruleMap.get(fn);
-      if (utils.checkAppExist(commandStr)) {
+      if (typeof commandStr === 'function' || utils.checkAppExist(commandStr)) {
         break;
       }
     }
   }
-  execSync(`${commandStr} ${filePath}`);
+  if (typeof commandStr === 'function') {
+    commandStr = commandStr();
+  }
+  execSync(`${commandStr} "${filePath}"`);
 })();
-
