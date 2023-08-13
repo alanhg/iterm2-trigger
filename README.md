@@ -19,8 +19,6 @@ chmod +x iterm2-trigger.sh
 ```
 ![https://i.imgur.com/t61vWbZ.jpg](https://i.imgur.com/t61vWbZ.jpg)
 
-
-
 ## 测试
 ```
 node ./iterm2-trigger.js "$PWD/iterm2-trigger.js"

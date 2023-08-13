@@ -1,8 +1,7 @@
-const [, , filePath] = process.argv;
+let [, , filePath] = process.argv;
 const {execSync} = require('child_process');
 const fs = require('fs');
-const path = require('path');
-const filename = path.basename(filePath);
+
 // 部分文件跳过检查，隐藏文件夹自动跳过
 const SKIP_MATCH_FILES_REG = [/^\./, /^node_modules$/];
 
@@ -48,24 +47,32 @@ const utils = {
    */
   suffixMatch: (canRetryLimit = 10, filePath, suffixes) => {
     return utils.matchFn(canRetryLimit, filePath, suffixes)[1];
-  }, checkAppExist: (shell) => {
-    try {
-      execSync(`which ${shell}`);
-      return true;
-    } catch (error) {
-      return false;
+  }, checkAppExist: (app) => {
+    if (app.match(/\.app$/)) {
+      app = `/Applications/${app}`;
     }
+    return fs.existsSync(app);
   }, isDirectory: (file) => {
     return fs.lstatSync(file).isDirectory();
   }, isFile: (file) => {
     return fs.lstatSync(file).isFile();
-  }, showSelector(apps = []) {
-    if (apps.length === 1) {
-      return apps[0];
+  },
+  openApp: (app, filePath) => {
+    if (app.match(/\.app$/)) {
+      execSync(`open -a "${app}" "${filePath}"`);
+    } else {
+      execSync(`${app} "${filePath}"`);
     }
-    return () => {
+  },
+  showSelector(apps = [], filePath) {
+    if (apps.length === 0) {
+      execSync(`open "${filePath}"`);
+    } else if (apps.length === 1) {
+      utils.openApp(apps[0], filePath);
+    } else {
       const command = `osascript -e 'set appChoices to ${JSON.stringify(apps).replace('[', '{').replace(']', '}')}
 set selectedApp to choose from list appChoices with prompt "Open with" default items {"${apps[0]}"}
+tell application (item 1 of selectedApp) to open "${filePath}"
 return selectedApp'`;
       return execSync(command, {encoding: 'utf8'});
     }
@@ -79,23 +86,28 @@ return selectedApp'`;
  * 项目文件夹名称命中go词汇的，使用goland打开
  */
 const ruleMap = new Map();
-ruleMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath, ['.go']), '/usr/local/bin/goland');
-ruleMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath, ['.js', '.jsx', '.ts', '.tsx', '.md']), '/usr/local/bin/webstorm');
-ruleMap.set((_filePath) => utils.suffixMatch(1, _filePath, ['.js', '.jsx', '.ts', '.tsx', '.md']), utils.showSelector(['/usr/local/bin/webstorm', 'open -a "/Applications/Visual Studio Code.app"']));
-ruleMap.set((_filePath) => true, 'open');
+ruleMap.set(
+  (_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath, ['.go'])
+  , 'GoLand.app');
+ruleMap.set((_filePath) => utils.isFile(_filePath) && utils.suffixMatch(10, _filePath,
+  ['.md']), 'Typora.app');
+ruleMap.set((_filePath) => utils.isDirectory(_filePath) && utils.suffixMatch(10, _filePath,
+  ['.js', '.jsx', '.ts', '.tsx', '.md']), 'WebStorm.app');
+ruleMap.set((_filePath) => utils.suffixMatch(1, _filePath,
+    ['.js', '.jsx', '.ts', '.tsx', '.md', '.log']),
+  ['WebStorm.app',
+    'Visual Studio Code - Insiders.app',
+    'Visual Studio Code.app']);
 
-(function init() {
-  let commandStr = '';
-  for (const fn of ruleMap.keys()) {
-    if (fn(filePath)) {
-      commandStr = ruleMap.get(fn);
-      if (typeof commandStr === 'function' || utils.checkAppExist(commandStr)) {
-        break;
-      }
-    }
+function run(file) {
+  let filePath = file.trim();
+  const matchItem = [...ruleMap.entries()].find(([match]) => match(filePath));
+  if (matchItem) {
+    const supportApps = typeof matchItem[1] === 'string' ? [matchItem[1]] : matchItem[1].filter(app => utils.checkAppExist(app));
+    utils.showSelector(supportApps, filePath);
+  } else {
+    utils.showSelector([], filePath);
   }
-  if (typeof commandStr === 'function') {
-    commandStr = commandStr();
-  }
-  execSync(`${commandStr.replace(/\n+$/, '')} "${filePath}"`);
-})();
+}
+
+run(filePath);
