@@ -12,6 +12,12 @@
 
 针对以上规则在`iterm2-trigger.js:ruleMap`下进行个性化定制修改
 
+## Requirement
+
+```shell
+brew install node
+```
+
 ## 安装配置
 
 ```shell
